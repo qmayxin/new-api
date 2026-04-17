@@ -1,4 +1,6 @@
-# CLAUDE.md — Project Conventions for new-api
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Overview
 
@@ -6,12 +8,77 @@ This is an AI API gateway/proxy built with Go. It aggregates 40+ upstream AI pro
 
 ## Tech Stack
 
-- **Backend**: Go 1.22+, Gin web framework, GORM v2 ORM
+- **Backend**: Go 1.25+, Gin web framework, GORM v2 ORM
 - **Frontend**: React 18, Vite, Semi Design UI (@douyinfe/semi-ui)
 - **Databases**: SQLite, MySQL, PostgreSQL (all three must be supported)
 - **Cache**: Redis (go-redis) + in-memory cache
 - **Auth**: JWT, WebAuthn/Passkeys, OAuth (GitHub, Discord, OIDC, etc.)
 - **Frontend package manager**: Bun (preferred over npm/yarn/pnpm)
+
+## Development Commands
+
+### Prerequisites
+
+```bash
+# Install air (Go hot reload) — only needed once
+go install github.com/air-verse/air@latest
+
+# Install frontend dependencies — only needed once
+cd web && bun install && cd ..
+```
+
+### Hot Reload Development (recommended)
+
+Requires two terminals:
+
+```bash
+# Terminal 1: frontend with Vite HMR
+make dev-frontend
+# or: cd web && bun run dev
+
+# Terminal 2: backend with air hot reload
+make dev-backend
+# or: cd . && air
+```
+
+Frontend dev server proxies `/api/*` to `localhost:3000`, so no backend port changes needed.
+
+### Build & Run (production-like)
+
+```bash
+# 1. Build frontend (required before first backend build — Go embeds web/dist/)
+make build-frontend
+
+# 2. Start backend
+make start-backend
+# or: go run .
+```
+
+### Testing
+
+```bash
+go test ./...                      # Run all tests
+go test ./service/...              # Run service tests
+go test -run TestName ./...        # Run single test
+```
+
+### Docker
+
+```bash
+docker build -t calciumion/new-api .
+docker-compose up -d
+```
+
+### Environment Configuration
+
+Copy `.env.example` to `.env` and at minimum set:
+
+```bash
+SESSION_SECRET=your_random_string   # Required — app exits if left as "random_string"
+DEBUG=true                           # Optional — enables debug logging
+```
+
+Without `SESSION_SECRET` changed, the app will exit on startup. Without `SQL_DSN`, it defaults to SQLite in `./data/` — works out of the box.
 
 ## Architecture
 
@@ -36,6 +103,44 @@ pkg/           — Internal packages (cachex, ionet)
 web/           — React frontend
   web/src/i18n/  — Frontend internationalization (i18next, zh/en/fr/ru/ja/vi)
 ```
+
+### Relay System
+
+The relay system bridges client requests to upstream AI providers. The core flow:
+
+1. `router/relay-router.go` routes `/v1/chat/completions`, `/v1/embeddings`, etc. to `controller/relay.go`
+2. `controller/relay.go` parses the request, resolves the channel/key, and calls `relay.*Handler`
+3. `relay/compatible_handler.go` (OpenAI-compatible) dispatches to `relay.ChannelHandler`:
+   - `relay.ChannelHandler` calls `channel.GetAdaptor(apiType)` to get a provider-specific `Adaptor`
+   - The `Adaptor.ConvertOpenAIRequest` transforms the unified OpenAI-format request into the provider's native format
+   - `Adaptor.DoRequest` sends it upstream; `Adaptor.DoResponse` transforms the response back to OpenAI format
+4. `relay/relay_adaptor.go` provides the `GetAdaptor` factory — a large switch mapping `constant.APIType*` to provider packages under `relay/channel/{provider}/`
+
+**Task relay** (`relay/relay_task.go`, `controller/task.go`) handles async jobs (video generation, music generation):
+- `RelayTaskSubmit` submits to upstream, handles pre-charging, returns a task ID
+- `RelayTaskFetch` polls upstream for status, maps to a unified `TaskDto`
+- Each platform has a `TaskAdaptor` under `relay/channel/task/{platform}/`
+
+### Channel Model
+
+Each `relay/channel/{provider}/` package implements `channel.Adaptor` (for synchronous API calls) and/or `channel.TaskAdaptor` (for async tasks). Key interfaces:
+- `ConvertOpenAIRequest` / `ConvertClaudeRequest` / `ConvertGeminiRequest` — transform client requests
+- `DoRequest` / `DoResponse` — send upstream and transform response
+- `GetModelList` — return the provider's supported model list
+
+### Request Flow (Chat Completions)
+
+```
+Client → router/relay-router.go → middleware (CORS, auth, stats)
+       → controller/relay.go (RelayChatCompletions)
+       → relay/compatible_handler.go (ChannelHandler)
+       → channel.Adaptor (provider-specific ConvertRequest)
+       → Upstream Provider
+       → channel.Adaptor (DoResponse: transform back)
+       → Client
+```
+
+Billing is handled by `service/billing.go` / `service/billing_session.go`: pre-consumption before relay, settlement/refund after response.
 
 ## Internationalization (i18n)
 
