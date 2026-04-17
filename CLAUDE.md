@@ -80,6 +80,19 @@ DEBUG=true                           # Optional — enables debug logging
 
 Without `SESSION_SECRET` changed, the app will exit on startup. Without `SQL_DSN`, it defaults to SQLite in `./data/` — works out of the box.
 
+**Recommended VSCode extensions:** Go (ms-vscode.Go), TypeScript and JavaScript Language Features (vscode.typescript-language-features).
+
+### Code Navigation
+
+Use LSP tools for precise type-aware navigation — prefer them over grep/read for understanding code:
+
+- `lsp_hover` — get type signature, doc comments, at cursor position
+- `lsp_goto_definition` — jump to definition
+- `lsp_find_references` — find all references of a symbol
+- `lsp_diagnostics` — check for LSP-reported errors/warnings in the current file
+
+These are available as deferred tools via `ToolSearch`. Use them when reading unfamiliar code or tracing a bug.
+
 ## Architecture
 
 Layered architecture: Router -> Controller -> Service -> Model
