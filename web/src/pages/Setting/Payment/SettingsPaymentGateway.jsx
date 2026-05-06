@@ -25,6 +25,7 @@ import {
   removeTrailingSlash,
   showError,
   showSuccess,
+  toBoolean,
   verifyJSON,
 } from '../../../helpers';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +44,12 @@ export default function SettingsPaymentGateway(props) {
     PayMethods: '',
     AmountOptions: '',
     AmountDiscount: '',
+    // 515pay配置
+    Pay515Enabled: false,
+    Pay515ApiUrl: '',
+    Pay515Pid: '',
+    Pay515PlatformPublicKey: '',
+    Pay515MerchantPrivateKey: '',
   });
   const [originInputs, setOriginInputs] = useState({});
   const formApiRef = useRef(null);
@@ -66,6 +73,12 @@ export default function SettingsPaymentGateway(props) {
         PayMethods: props.options.PayMethods || '',
         AmountOptions: props.options.AmountOptions || '',
         AmountDiscount: props.options.AmountDiscount || '',
+        // 515pay配置
+        Pay515Enabled: toBoolean(props.options.Pay515Enabled),
+        Pay515ApiUrl: props.options.Pay515ApiUrl || '',
+        Pay515Pid: props.options.Pay515Pid || '',
+        Pay515PlatformPublicKey: props.options.Pay515PlatformPublicKey || '',
+        Pay515MerchantPrivateKey: props.options.Pay515MerchantPrivateKey || '',
       };
 
       // 美化 JSON 展示
@@ -179,6 +192,27 @@ export default function SettingsPaymentGateway(props) {
           key: 'payment_setting.amount_discount',
           value: inputs.AmountDiscount,
         });
+      }
+
+      // 515pay配置 - 总是保存以确保开关状态正确
+      options.push({
+        key: 'Pay515Enabled',
+        value: inputs.Pay515Enabled ? 'true' : 'false',
+      });
+      if (inputs.Pay515ApiUrl !== originInputs.Pay515ApiUrl) {
+        options.push({
+          key: 'Pay515ApiUrl',
+          value: removeTrailingSlash(inputs.Pay515ApiUrl),
+        });
+      }
+      if (inputs.Pay515Pid !== originInputs.Pay515Pid) {
+        options.push({ key: 'Pay515Pid', value: inputs.Pay515Pid });
+      }
+      if (inputs.Pay515PlatformPublicKey !== originInputs.Pay515PlatformPublicKey) {
+        options.push({ key: 'Pay515PlatformPublicKey', value: inputs.Pay515PlatformPublicKey });
+      }
+      if (inputs.Pay515MerchantPrivateKey !== originInputs.Pay515MerchantPrivateKey) {
+        options.push({ key: 'Pay515MerchantPrivateKey', value: inputs.Pay515MerchantPrivateKey });
       }
 
       // 发送请求
@@ -324,6 +358,56 @@ export default function SettingsPaymentGateway(props) {
             </Col>
           </Row>
 
+          <Button onClick={submitPayAddress}>{t('更新支付设置')}</Button>
+        </Form.Section>
+
+        {/* 515pay配置 */}
+        <Form.Section text={t('515pay支付设置')}>
+          <Text>
+            {t('（515pay支付接口，支持RSA签名验签）')}
+          </Text>
+          <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }} style={{ marginTop: 16 }}>
+            <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+              <Form.Switch
+                field='Pay515Enabled'
+                label={t('启用515pay')}
+              />
+            </Col>
+            <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+              <Form.Input
+                field='Pay515ApiUrl'
+                label={t('515pay接口地址')}
+                placeholder={t('例如：https://pay.515shun.fun')}
+              />
+            </Col>
+            <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+              <Form.Input
+                field='Pay515Pid'
+                label={t('515pay商户ID')}
+                placeholder={t('商户ID')}
+              />
+            </Col>
+          </Row>
+          <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }} style={{ marginTop: 16 }}>
+            <Col span={24}>
+              <Form.TextArea
+                field='Pay515PlatformPublicKey'
+                label={t('515pay平台公钥')}
+                placeholder={t('平台RSA公钥')}
+                autosize
+              />
+            </Col>
+          </Row>
+          <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }} style={{ marginTop: 16 }}>
+            <Col span={24}>
+              <Form.TextArea
+                field='Pay515MerchantPrivateKey'
+                label={t('515pay商户私钥')}
+                placeholder={t('商户RSA私钥')}
+                autosize
+              />
+            </Col>
+          </Row>
           <Button onClick={submitPayAddress}>{t('更新支付设置')}</Button>
         </Form.Section>
       </Form>

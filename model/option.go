@@ -77,6 +77,11 @@ func InitOptionMap() {
 	common.OptionMap["CustomCallbackAddress"] = ""
 	common.OptionMap["EpayId"] = ""
 	common.OptionMap["EpayKey"] = ""
+	common.OptionMap["Pay515Enabled"] = strconv.FormatBool(operation_setting.Pay515Enabled)
+	common.OptionMap["Pay515ApiUrl"] = operation_setting.Pay515ApiUrl
+	common.OptionMap["Pay515Pid"] = operation_setting.Pay515Pid
+	common.OptionMap["Pay515PlatformPublicKey"] = operation_setting.Pay515PlatformPublicKey
+	common.OptionMap["Pay515MerchantPrivateKey"] = operation_setting.Pay515MerchantPrivateKey
 	common.OptionMap["Price"] = strconv.FormatFloat(operation_setting.Price, 'f', -1, 64)
 	common.OptionMap["USDExchangeRate"] = strconv.FormatFloat(operation_setting.USDExchangeRate, 'f', -1, 64)
 	common.OptionMap["MinTopUp"] = strconv.Itoa(operation_setting.MinTopUp)
@@ -351,6 +356,16 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.EpayId = value
 	case "EpayKey":
 		operation_setting.EpayKey = value
+	case "Pay515Enabled":
+		operation_setting.Pay515Enabled = value == "true"
+	case "Pay515ApiUrl":
+		operation_setting.Pay515ApiUrl = value
+	case "Pay515Pid":
+		operation_setting.Pay515Pid = value
+	case "Pay515PlatformPublicKey":
+		operation_setting.Pay515PlatformPublicKey = value
+	case "Pay515MerchantPrivateKey":
+		operation_setting.Pay515MerchantPrivateKey = value
 	case "Price":
 		operation_setting.Price, _ = strconv.ParseFloat(value, 64)
 	case "USDExchangeRate":

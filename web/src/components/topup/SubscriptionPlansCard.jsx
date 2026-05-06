@@ -41,10 +41,10 @@ import {
 
 const { Text } = Typography;
 
-// 过滤易支付方式
+// 过滤易支付方式（排除 stripe、creem、515pay）
 function getEpayMethods(payMethods = []) {
   return (payMethods || []).filter(
-    (m) => m?.type && m.type !== 'stripe' && m.type !== 'creem',
+    (m) => m?.type && m.type !== 'stripe' && m.type !== 'creem' && m.type !== '515pay',
   );
 }
 
@@ -77,6 +77,8 @@ const SubscriptionPlansCard = ({
   enableOnlineTopUp = false,
   enableStripeTopUp = false,
   enableCreemTopUp = false,
+  enable515payTopUp = false,
+  pay515payMethods = [],
   billingPreference,
   onChangeBillingPreference,
   activeSubscriptions = [],
@@ -88,6 +90,7 @@ const SubscriptionPlansCard = ({
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [paying, setPaying] = useState(false);
   const [selectedEpayMethod, setSelectedEpayMethod] = useState('');
+  const [selected515payMethod, setSelected515payMethod] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   const epayMethods = useMemo(() => getEpayMethods(payMethods), [payMethods]);
@@ -95,6 +98,7 @@ const SubscriptionPlansCard = ({
   const openBuy = (p) => {
     setSelectedPlan(p);
     setSelectedEpayMethod(epayMethods?.[0]?.type || '');
+    setSelected515payMethod(pay515payMethods?.[0]?.type || '');
     setOpen(true);
   };
 
@@ -184,6 +188,38 @@ const SubscriptionPlansCard = ({
         submitEpayForm({ url: res.data.url, params: res.data.data });
         showSuccess(t('已发起支付'));
         closeBuy();
+      } else {
+        const errorMsg =
+          typeof res.data?.data === 'string'
+            ? res.data.data
+            : res.data?.message || t('支付失败');
+        showError(errorMsg);
+      }
+    } catch (e) {
+      showError(t('支付请求失败'));
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const pay515pay = async (paymentMethod) => {
+    const method = paymentMethod || selected515payMethod;
+    setSelected515payMethod(method);
+    setPaying(true);
+    try {
+      const res = await API.post('/api/subscription/515pay/pay', {
+        plan_id: selectedPlan.plan.id,
+        payment_method: method,
+      });
+      if (res.data?.message === 'success') {
+        // 515pay 返回支付链接，直接跳转
+        if (res.data?.url) {
+          window.open(res.data.url, '_blank');
+          showSuccess(t('已打开支付页面'));
+          closeBuy();
+        } else {
+          showError(t('支付链接获取失败'));
+        }
       } else {
         const errorMsg =
           typeof res.data?.data === 'string'
@@ -670,9 +706,14 @@ const SubscriptionPlansCard = ({
         selectedEpayMethod={selectedEpayMethod}
         setSelectedEpayMethod={setSelectedEpayMethod}
         epayMethods={epayMethods}
+        payMethods={payMethods}
         enableOnlineTopUp={enableOnlineTopUp}
         enableStripeTopUp={enableStripeTopUp}
         enableCreemTopUp={enableCreemTopUp}
+        enable515payTopUp={enable515payTopUp}
+        pay515payMethods={pay515payMethods}
+        selected515payMethod={selected515payMethod}
+        setSelected515payMethod={setSelected515payMethod}
         purchaseLimitInfo={
           selectedPlan?.plan?.id
             ? {
@@ -684,6 +725,7 @@ const SubscriptionPlansCard = ({
         onPayStripe={payStripe}
         onPayCreem={payCreem}
         onPayEpay={payEpay}
+        onPay515pay={pay515pay}
       />
     </>
   );

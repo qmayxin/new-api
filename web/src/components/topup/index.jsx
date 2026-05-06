@@ -76,6 +76,12 @@ const TopUp = () => {
   const [waffoPayMethods, setWaffoPayMethods] = useState([]);
   const [waffoMinTopUp, setWaffoMinTopUp] = useState(1);
 
+  // 515pay 相关状态
+  const [enable515payTopUp, setEnable515payTopUp] = useState(false);
+  const [pay515payMethods, setPay515payMethods] = useState([]);
+  const [epayPayMethods, setEpayPayMethods] = useState([]);
+  const [selected515payMethod, setSelected515payMethod] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
   const [payWay, setPayWay] = useState('');
@@ -162,6 +168,12 @@ const TopUp = () => {
         showError(t('管理员未开启Stripe充值！'));
         return;
       }
+    } else if (payment.startsWith('515pay_')) {
+      // 515pay: 需要开启 515pay 而不是在线充值
+      if (!enable515payTopUp) {
+        showError(t('管理员未开启515pay充值！'));
+        return;
+      }
     } else {
       if (!enableOnlineTopUp) {
         showError(t('管理员未开启在线充值！'));
@@ -196,6 +208,8 @@ const TopUp = () => {
       if (amount === 0) {
         await getStripeAmount();
       }
+    } else if (payWay.startsWith('515pay_')) {
+      // 515pay 不需要获取金额
     } else {
       // 普通支付处理
       if (amount === 0) {
@@ -216,6 +230,13 @@ const TopUp = () => {
           amount: parseInt(topUpCount),
           payment_method: 'stripe',
         });
+      } else if (payWay.startsWith('515pay_')) {
+        // 515pay 支付请求
+        const subPaymentMethod = payWay.replace('515pay_', ''); // wxpay / alipay
+        res = await API.post('/api/user/topup/515pay/pay', {
+          amount: parseInt(topUpCount),
+          payment_method: subPaymentMethod,
+        });
       } else {
         // 普通支付请求
         res = await API.post('/api/user/pay', {
@@ -230,6 +251,13 @@ const TopUp = () => {
           if (payWay === 'stripe') {
             // Stripe 支付回调处理
             window.open(data.pay_link, '_blank');
+          } else if (payWay.startsWith('515pay_')) {
+            // 515pay 返回支付链接，直接跳转
+            if (res.data?.url) {
+              window.open(res.data.url, '_blank');
+            } else {
+              showError(t('支付链接获取失败'));
+            }
           } else {
             // 普通支付表单提交
             let params = data;
@@ -312,6 +340,34 @@ const TopUp = () => {
     } finally {
       setCreemOpen(false);
       setConfirmLoading(false);
+    }
+  };
+
+  const onPay515payTopup = async () => {
+    if (!selected515payMethod) {
+      showError(t('请选择支付方式'));
+      return;
+    }
+    if (topUpCount < minTopUp) {
+      showError(t('充值数量不能小于') + minTopUp);
+      return;
+    }
+    setPaymentLoading(true);
+    try {
+      const res = await API.post('/api/user/topup/515pay/pay', {
+        amount: parseInt(topUpCount),
+        payment_method: selected515payMethod,
+      });
+      if (res?.data?.message === 'success' && res.data?.url) {
+        window.open(res.data.url, '_blank');
+      } else {
+        const msg = res?.data?.data || res?.data?.message || t('支付失败');
+        showError(typeof msg === 'string' ? msg : t('支付失败'));
+      }
+    } catch (e) {
+      showError(t('支付请求失败'));
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -493,6 +549,28 @@ const TopUp = () => {
           setEnableCreemTopUp(enableCreemTopUp);
           const enableWaffoTopUp = data.enable_waffo_topup || false;
           setEnableWaffoTopUp(enableWaffoTopUp);
+          const enable515payTopUp = data.enable_515pay_topup || false;
+          setEnable515payTopUp(enable515payTopUp);
+
+          // 515pay 支持的支付方式
+          try {
+            const methods = data.pay_515pay_methods || [];
+            console.log('[515pay] pay_515pay_methods:', methods);
+            setPay515payMethods(methods);
+          } catch (e) {
+            setPay515payMethods([]);
+          }
+
+          console.log('[515pay] enable_515pay_topup:', data.enable_515pay_topup);
+
+          // 易支付配置的支付方式
+          try {
+            const methods = data.epay_pay_methods || [];
+            console.log('[index] epay_pay_methods from backend:', methods);
+            setEpayPayMethods(methods);
+          } catch (e) {
+            setEpayPayMethods([]);
+          }
           setWaffoPayMethods(data.waffo_pay_methods || []);
           setWaffoMinTopUp(data.waffo_min_topup || 1);
           setMinTopUp(minTopUpValue);
@@ -791,6 +869,12 @@ const TopUp = () => {
           enableWaffoTopUp={enableWaffoTopUp}
           waffoTopUp={waffoTopUp}
           waffoPayMethods={waffoPayMethods}
+          enable515payTopUp={enable515payTopUp}
+          pay515payMethods={pay515payMethods}
+          epayPayMethods={epayPayMethods}
+          selected515payMethod={selected515payMethod}
+          setSelected515payMethod={setSelected515payMethod}
+          onPay515payTopup={onPay515payTopup}
           presetAmounts={presetAmounts}
           selectedPreset={selectedPreset}
           selectPresetAmount={selectPresetAmount}

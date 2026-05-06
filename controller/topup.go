@@ -78,24 +78,66 @@ func GetTopUpInfo(c *gin.Context) {
 		}
 	}
 
+	// 如果启用了 515pay 支付，添加到支付方法列表
+	if operation_setting.Pay515Enabled {
+		has515pay := false
+		for _, method := range payMethods {
+			if method["type"] == "515pay" {
+				has515pay = true
+				break
+			}
+		}
+
+		if !has515pay {
+			method515pay := map[string]string{
+				"name":      "515pay",
+				"type":      "515pay",
+				"color":     "rgba(var(--semi-orange-5), 1)",
+				"min_topup": strconv.Itoa(operation_setting.MinTopUp),
+			}
+			payMethods = append(payMethods, method515pay)
+		}
+	}
+
+	// 515pay 默认支付方式（平台级支持，和易支付独立）
+	// 515pay 平台统一支持以下方式，商户通过 payment_method 参数指定
+	_515payPayMethods := []map[string]string{
+		{"name": "微信支付", "type": "wxpay", "color": "rgba(var(--semi-green-5), 1)"},
+		{"name": "支付宝", "type": "alipay", "color": "rgba(var(--semi-blue-5), 1)"},
+	}
+
+	// 易支付配置的支付方式（不含 stripe/creem/515pay）
+	epayPayMethods := []map[string]string{}
+	for _, m := range payMethods {
+		switch m["type"] {
+		case "stripe", "creem", "515pay":
+			// 排除
+		default:
+			epayPayMethods = append(epayPayMethods, m)
+		}
+	}
+
 	data := gin.H{
-		"enable_online_topup": operation_setting.PayAddress != "" && operation_setting.EpayId != "" && operation_setting.EpayKey != "",
-		"enable_stripe_topup": setting.StripeApiSecret != "" && setting.StripeWebhookSecret != "" && setting.StripePriceId != "",
-		"enable_creem_topup":  setting.CreemApiKey != "" && setting.CreemProducts != "[]",
-		"enable_waffo_topup": enableWaffo,
+		"enable_online_topup":  operation_setting.PayAddress != "" && operation_setting.EpayId != "" && operation_setting.EpayKey != "",
+		"enable_stripe_topup":  setting.StripeApiSecret != "" && setting.StripeWebhookSecret != "" && setting.StripePriceId != "",
+		"enable_creem_topup":   setting.CreemApiKey != "" && setting.CreemProducts != "[]",
+		"enable_waffo_topup":   enableWaffo,
+		"enable_515pay_topup":  operation_setting.Pay515Enabled,
 		"waffo_pay_methods": func() interface{} {
 			if enableWaffo {
 				return setting.GetWaffoPayMethods()
 			}
 			return nil
 		}(),
-		"creem_products": setting.CreemProducts,
-		"pay_methods":         payMethods,
-		"min_topup":           operation_setting.MinTopUp,
-		"stripe_min_topup":    setting.StripeMinTopUp,
-		"waffo_min_topup":     setting.WaffoMinTopUp,
-		"amount_options":      operation_setting.GetPaymentSetting().AmountOptions,
-		"discount":            operation_setting.GetPaymentSetting().AmountDiscount,
+		"creem_products":         setting.CreemProducts,
+		"pay_methods":            payMethods,
+		"epay_pay_methods":       epayPayMethods,          // 易支付配置的支付方式（不含 stripe/creem/515pay）
+		"pay_515pay_methods":     _515payPayMethods,        // 515pay 支持的支付方式
+		"min_topup":              operation_setting.MinTopUp,
+		"stripe_min_topup":       setting.StripeMinTopUp,
+		"waffo_min_topup":        setting.WaffoMinTopUp,
+		"amount_options":         operation_setting.GetPaymentSetting().AmountOptions,
+		"discount":               operation_setting.GetPaymentSetting().AmountDiscount,
 	}
 	common.ApiSuccess(c, data)
 }

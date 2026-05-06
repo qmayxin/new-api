@@ -27,9 +27,10 @@ import {
   Select,
   Divider,
   Tooltip,
+  Space,
 } from '@douyinfe/semi-ui';
 import { Crown, CalendarClock, Package } from 'lucide-react';
-import { SiStripe } from 'react-icons/si';
+import { SiStripe, SiAlipay, SiWechat } from 'react-icons/si';
 import { IconCreditCard } from '@douyinfe/semi-icons';
 import { renderQuota } from '../../../helpers';
 import { getCurrencyConfig } from '../../../helpers/render';
@@ -49,13 +50,19 @@ const SubscriptionPurchaseModal = ({
   selectedEpayMethod,
   setSelectedEpayMethod,
   epayMethods = [],
+  payMethods = [],
   enableOnlineTopUp = false,
   enableStripeTopUp = false,
   enableCreemTopUp = false,
+  enable515payTopUp = false,
+  pay515payMethods = [],
+  selected515payMethod = '',
+  setSelected515payMethod,
   purchaseLimitInfo = null,
   onPayStripe,
   onPayCreem,
   onPayEpay,
+  onPay515pay,
 }) => {
   const plan = selectedPlan?.plan;
   const totalAmount = Number(plan?.total_amount || 0);
@@ -69,7 +76,9 @@ const SubscriptionPurchaseModal = ({
   const hasStripe = enableStripeTopUp && !!plan?.stripe_price_id;
   const hasCreem = enableCreemTopUp && !!plan?.creem_product_id;
   const hasEpay = enableOnlineTopUp && epayMethods.length > 0;
-  const hasAnyPayment = hasStripe || hasCreem || hasEpay;
+  // 515pay: 直接根据开关判断，不从 payMethods 过滤（payMethods 里的 alipay/wxpay 是易支付的子方式）
+  const has515pay = enable515payTopUp;
+  const hasAnyPayment = hasStripe || hasCreem || hasEpay || has515pay;
   const purchaseLimit = Number(purchaseLimitInfo?.limit || 0);
   const purchaseCount = Number(purchaseLimitInfo?.count || 0);
   const purchaseLimitReached =
@@ -239,6 +248,44 @@ const SubscriptionPurchaseModal = ({
                   >
                     {t('支付')}
                   </Button>
+                </div>
+              )}
+
+              {has515pay && (
+                <div className='space-y-2'>
+                  <Space wrap>
+                    {(pay515payMethods || []).map((method) => (
+                      <Button
+                        key={method.type}
+                        theme={selected515payMethod === method.type ? 'solid' : 'light'}
+                        type={selected515payMethod === method.type ? 'primary' : 'tertiary'}
+                        onClick={() => setSelected515payMethod(method.type)}
+                        disabled={purchaseLimitReached}
+                        icon={
+                          method.type === 'wxpay' ? (
+                            <SiWechat size={14} color={selected515payMethod === method.type ? '#fff' : '#07C160'} />
+                          ) : method.type === 'alipay' ? (
+                            <SiAlipay size={14} color={selected515payMethod === method.type ? '#fff' : '#1677FF'} />
+                          ) : null
+                        }
+                      >
+                        {method.name}
+                      </Button>
+                    ))}
+                  </Space>
+                  {selected515payMethod && (
+                    <Button
+                      theme='solid'
+                      type='primary'
+                      block
+                      size='large'
+                      onClick={() => onPay515pay(selected515payMethod)}
+                      loading={paying}
+                      disabled={purchaseLimitReached}
+                    >
+                      {t('立即支付')}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

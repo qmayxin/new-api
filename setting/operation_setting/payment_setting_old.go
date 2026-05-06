@@ -57,3 +57,10 @@ func ContainsPayMethod(method string) bool {
 	}
 	return false
 }
+
+// 515pay payment settings
+var Pay515Enabled = false
+var Pay515ApiUrl = ""
+var Pay515Pid = ""
+var Pay515PlatformPublicKey = ""  // 平台公钥
+var Pay515MerchantPrivateKey = "" // 商户私钥

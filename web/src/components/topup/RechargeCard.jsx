@@ -90,6 +90,12 @@ const RechargeCard = ({
   enableWaffoTopUp,
   waffoTopUp,
   waffoPayMethods,
+  enable515payTopUp,
+  pay515payMethods = [],
+  epayPayMethods = [],
+  selected515payMethod = '',
+  setSelected515payMethod,
+  onPay515payTopup,
   subscriptionLoading = false,
   subscriptionPlans = [],
   billingPreference,
@@ -98,6 +104,8 @@ const RechargeCard = ({
   allSubscriptions = [],
   reloadSubscriptionSelf,
 }) => {
+  // DEBUG
+  console.log('[RechargeCard] epayPayMethods:', epayPayMethods, '| pay515payMethods:', pay515payMethods, '| enable515payTopUp:', enable515payTopUp, '| selected515payMethod:', selected515payMethod);
   const onlineFormApiRef = useRef(null);
   const redeemFormApiRef = useRef(null);
   const initialTabSetRef = useRef(false);
@@ -227,19 +235,19 @@ const RechargeCard = ({
           <div className='py-8 flex justify-center'>
             <Spin size='large' />
           </div>
-        ) : enableOnlineTopUp || enableStripeTopUp || enableCreemTopUp || enableWaffoTopUp ? (
+        ) : enableOnlineTopUp || enableStripeTopUp || enableCreemTopUp || enableWaffoTopUp || enable515payTopUp ? (
           <Form
             getFormApi={(api) => (onlineFormApiRef.current = api)}
             initValues={{ topUpCount: topUpCount }}
           >
             <div className='space-y-6'>
-              {(enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp) && (
+              {(enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp || enable515payTopUp) && (
                 <Row gutter={12}>
                   <Col xs={24} sm={24} md={24} lg={10} xl={10}>
                     <Form.InputNumber
                       field='topUpCount'
                       label={t('充值数量')}
-                      disabled={!enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp}
+                      disabled={!enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp && !enable515payTopUp}
                       placeholder={
                         t('充值数量，最低 ') + renderQuotaWithAmount(minTopUp)
                       }
@@ -291,77 +299,11 @@ const RechargeCard = ({
                       style={{ width: '100%' }}
                     />
                   </Col>
-                  {payMethods && payMethods.filter(m => m.type !== 'waffo').length > 0 && (
-                  <Col xs={24} sm={24} md={24} lg={14} xl={14}>
-                    <Form.Slot label={t('选择支付方式')}>
-                        <Space wrap>
-                          {payMethods.filter(m => m.type !== 'waffo').map((payMethod) => {
-                            const minTopupVal = Number(payMethod.min_topup) || 0;
-                            const isStripe = payMethod.type === 'stripe';
-                            const disabled =
-                              (!enableOnlineTopUp && !isStripe) ||
-                              (!enableStripeTopUp && isStripe) ||
-                              minTopupVal > Number(topUpCount || 0);
-
-                            const buttonEl = (
-                              <Button
-                                key={payMethod.type}
-                                theme='outline'
-                                type='tertiary'
-                                onClick={() => preTopUp(payMethod.type)}
-                                disabled={disabled}
-                                loading={
-                                  paymentLoading && payWay === payMethod.type
-                                }
-                                icon={
-                                  payMethod.type === 'alipay' ? (
-                                    <SiAlipay size={18} color='#1677FF' />
-                                  ) : payMethod.type === 'wxpay' ? (
-                                    <SiWechat size={18} color='#07C160' />
-                                  ) : payMethod.type === 'stripe' ? (
-                                    <SiStripe size={18} color='#635BFF' />
-                                  ) : (
-                                    <CreditCard
-                                      size={18}
-                                      color={
-                                        payMethod.color ||
-                                        'var(--semi-color-text-2)'
-                                      }
-                                    />
-                                  )
-                                }
-                                className='!rounded-lg !px-4 !py-2'
-                              >
-                                {payMethod.name}
-                              </Button>
-                            );
-
-                            return disabled &&
-                              minTopupVal > Number(topUpCount || 0) ? (
-                              <Tooltip
-                                content={
-                                  t('此支付方式最低充值金额为') +
-                                  ' ' +
-                                  minTopupVal
-                                }
-                                key={payMethod.type}
-                              >
-                                {buttonEl}
-                              </Tooltip>
-                            ) : (
-                              <React.Fragment key={payMethod.type}>
-                                {buttonEl}
-                              </React.Fragment>
-                            );
-                          })}
-                        </Space>
-                    </Form.Slot>
-                  </Col>
-                  )}
                 </Row>
               )}
 
-              {(enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp) && (
+
+              {(enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp || enableCreemTopUp || enable515payTopUp) && (
                 <Form.Slot
                   label={
                     <div className='flex items-center gap-2'>
@@ -482,6 +424,48 @@ const RechargeCard = ({
                 </Form.Slot>
               )}
 
+              {/* 515pay 充值入口 */}
+              {enable515payTopUp && (pay515payMethods || []).length > 0 && (
+                <div className='space-y-3'>
+                  <Text size='small' type='tertiary'>{t('选择支付方式')}：</Text>
+                  <Space>
+                    {(pay515payMethods || []).map((method) => (
+                      <Button
+                        key={method.type}
+                        theme={selected515payMethod === method.type ? 'solid' : 'light'}
+                        type={selected515payMethod === method.type ? 'primary' : 'tertiary'}
+                        onClick={() => setSelected515payMethod(method.type)}
+                        disabled={paymentLoading}
+                        icon={
+                          method.type === 'wxpay' ? (
+                            <SiWechat size={18} color={selected515payMethod === method.type ? '#fff' : '#07C160'} />
+                          ) : method.type === 'alipay' ? (
+                            <SiAlipay size={18} color={selected515payMethod === method.type ? '#fff' : '#1677FF'} />
+                          ) : null
+                        }
+                        className='!rounded-lg !px-4 !py-2'
+                      >
+                        {method.name}
+                      </Button>
+                    ))}
+                  </Space>
+                  <Button
+                    theme='solid'
+                    type='primary'
+                    block
+                    size='large'
+                    onClick={onPay515payTopup}
+                    loading={paymentLoading}
+                    disabled={!selected515payMethod}
+                    className='!rounded-xl !py-4 !text-base !font-bold'
+                  >
+                    {selected515payMethod
+                      ? `${t('立即支付')} (${pay515payMethods?.find(m => m.type === selected515payMethod)?.name || selected515payMethod})`
+                      : t('请先选择支付方式')}
+                  </Button>
+                </div>
+              )}
+
               {/* Waffo 充值区域 */}
               {enableWaffoTopUp &&
                 waffoPayMethods &&
@@ -548,6 +532,7 @@ const RechargeCard = ({
                   </div>
                 </Form.Slot>
               )}
+
             </div>
           </Form>
         ) : (
@@ -661,6 +646,8 @@ const RechargeCard = ({
                 enableOnlineTopUp={enableOnlineTopUp}
                 enableStripeTopUp={enableStripeTopUp}
                 enableCreemTopUp={enableCreemTopUp}
+                enable515payTopUp={enable515payTopUp}
+                pay515payMethods={pay515payMethods}
                 billingPreference={billingPreference}
                 onChangeBillingPreference={onChangeBillingPreference}
                 activeSubscriptions={activeSubscriptions}
