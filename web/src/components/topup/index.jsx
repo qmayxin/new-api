@@ -80,7 +80,9 @@ const TopUp = () => {
   const [enable515payTopUp, setEnable515payTopUp] = useState(false);
   const [pay515payMethods, setPay515payMethods] = useState([]);
   const [epayPayMethods, setEpayPayMethods] = useState([]);
-  const [selected515payMethod, setSelected515payMethod] = useState('');
+  const [selected515payMethod, setSelected515payMethod] = useState('wxpay');
+  const [iframeUrl, setIframeUrl] = useState('');
+  const [iframeVisible, setIframeVisible] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
@@ -359,7 +361,9 @@ const TopUp = () => {
         payment_method: selected515payMethod,
       });
       if (res?.data?.message === 'success' && res.data?.url) {
-        window.open(res.data.url, '_blank');
+        setIframeUrl(res.data.url);
+        setIframeVisible(true);
+        showSuccess(t('正在打开支付页面'));
       } else {
         const msg = res?.data?.data || res?.data?.message || t('支付失败');
         showError(typeof msg === 'string' ? msg : t('支付失败'));
@@ -920,6 +924,29 @@ const TopUp = () => {
           handleAffLinkClick={handleAffLinkClick}
         />
       </div>
+
+      {/* 515pay 支付内嵌弹窗 */}
+      <Modal
+        title={t('支付')}
+        visible={iframeVisible}
+        onCancel={() => setIframeVisible(false)}
+        footer={null}
+        size='large'
+        centered
+        bodyStyle={{ padding: 0, height: '70vh' }}
+      >
+        {iframeUrl ? (
+          <iframe
+            src={iframeUrl}
+            style={{ width: '100%', height: '100%', border: 'none', borderRadius: '8px' }}
+            title={t('支付页面')}
+          />
+        ) : (
+          <div className='flex items-center justify-center h-full'>
+            <span className='text-gray-400'>{t('加载中...')}</span>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

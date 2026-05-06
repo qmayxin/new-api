@@ -23,6 +23,7 @@ import {
   Button,
   Card,
   Divider,
+  Modal,
   Select,
   Skeleton,
   Space,
@@ -92,6 +93,8 @@ const SubscriptionPlansCard = ({
   const [selectedEpayMethod, setSelectedEpayMethod] = useState('');
   const [selected515payMethod, setSelected515payMethod] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [iframeUrl, setIframeUrl] = useState('');
+  const [iframeVisible, setIframeVisible] = useState(false);
 
   const epayMethods = useMemo(() => getEpayMethods(payMethods), [payMethods]);
 
@@ -212,11 +215,10 @@ const SubscriptionPlansCard = ({
         payment_method: method,
       });
       if (res.data?.message === 'success') {
-        // 515pay 返回支付链接，直接跳转
         if (res.data?.url) {
-          window.open(res.data.url, '_blank');
-          showSuccess(t('已打开支付页面'));
-          closeBuy();
+          setIframeUrl(res.data.url);
+          setIframeVisible(true);
+          showSuccess(t('正在打开支付页面'));
         } else {
           showError(t('支付链接获取失败'));
         }
@@ -727,6 +729,29 @@ const SubscriptionPlansCard = ({
         onPayEpay={payEpay}
         onPay515pay={pay515pay}
       />
+
+      {/* 515pay 支付内嵌弹窗 */}
+      <Modal
+        title={t('支付')}
+        visible={iframeVisible}
+        onCancel={() => setIframeVisible(false)}
+        footer={null}
+        size='large'
+        centered
+        bodyStyle={{ padding: 0, height: '70vh' }}
+      >
+        {iframeUrl ? (
+          <iframe
+            src={iframeUrl}
+            style={{ width: '100%', height: '100%', border: 'none', borderRadius: '8px' }}
+            title={t('支付页面')}
+          />
+        ) : (
+          <div className='flex items-center justify-center h-full'>
+            <Typography.Text type='tertiary'>{t('加载中...')}</Typography.Text>
+          </div>
+        )}
+      </Modal>
     </>
   );
 };
