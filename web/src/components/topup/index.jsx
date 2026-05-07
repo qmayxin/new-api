@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useContext, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   API,
@@ -83,6 +83,39 @@ const TopUp = () => {
   const [selected515payMethod, setSelected515payMethod] = useState('wxpay');
   const [iframeUrl, setIframeUrl] = useState('');
   const [iframeVisible, setIframeVisible] = useState(false);
+  const iframeRef = useRef(null);
+
+  // iframe 关闭时刷新用户余额
+  useEffect(() => {
+    if (!iframeVisible) {
+      // 刷新用户数据（更新账户余额）
+      API.get('/api/user/self').then((res) => {
+        if (res.data?.data) {
+          userDispatch({ type: 'login', payload: res.data.data });
+        }
+      });
+    }
+  }, [iframeVisible]);
+
+  const handleIframeLoad = () => {
+    try {
+      const iframe = iframeRef.current;
+      if (!iframe) return;
+      const iframeLocation = iframe.contentWindow?.location?.href || '';
+      if (iframeLocation.includes('/console/topup?pay=success')) {
+        setIframeVisible(false);
+        showSuccess(t('支付成功'));
+      } else if (iframeLocation.includes('/console/topup?pay=fail')) {
+        setIframeVisible(false);
+        showError(t('支付失败'));
+      } else if (iframeLocation.includes('/console/topup?pay=pending')) {
+        setIframeVisible(false);
+        showError(t('支付待处理'));
+      }
+    } catch {
+      // 跨域访问会被拒绝，忽略
+    }
+  };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
@@ -435,7 +468,7 @@ const TopUp = () => {
     }
   };
 
-  const getSubscriptionSelf = async () => {
+  const getSubscriptionSelf = useCallback(async () => {
     try {
       const res = await API.get('/api/subscription/self');
       if (res.data?.success) {
@@ -452,7 +485,7 @@ const TopUp = () => {
     } catch (e) {
       // ignore
     }
-  };
+  }, []);
 
   const updateBillingPreference = async (pref) => {
     const previousPref = billingPreference;
@@ -937,9 +970,11 @@ const TopUp = () => {
       >
         {iframeUrl ? (
           <iframe
+            ref={iframeRef}
             src={iframeUrl}
             style={{ width: '100%', height: '100%', border: 'none', borderRadius: '8px' }}
             title={t('支付页面')}
+            onLoad={handleIframeLoad}
           />
         ) : (
           <div className='flex items-center justify-center h-full'>

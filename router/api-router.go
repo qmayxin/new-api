@@ -171,6 +171,13 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/subscription/515pay/notify", controller.Subscription515payNotify)
 		apiRouter.GET("/subscription/515pay/return", controller.Subscription515payReturn)
 		apiRouter.POST("/subscription/515pay/return", controller.Subscription515payReturn)
+
+		// Topup payment callbacks (no auth)
+		apiRouter.GET("/topup/515pay/notify", controller.Topup515payNotify)
+		apiRouter.POST("/topup/515pay/notify", controller.Topup515payNotify)
+		apiRouter.GET("/topup/515pay/return", controller.Topup515payReturn)
+		apiRouter.POST("/topup/515pay/return", controller.Topup515payReturn)
+		//
 		optionRoute := apiRouter.Group("/option")
 		optionRoute.Use(middleware.RootAuth())
 		{

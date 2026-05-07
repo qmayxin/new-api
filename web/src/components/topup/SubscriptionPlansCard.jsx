@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   Badge,
   Button,
@@ -95,6 +95,15 @@ const SubscriptionPlansCard = ({
   const [refreshing, setRefreshing] = useState(false);
   const [iframeUrl, setIframeUrl] = useState('');
   const [iframeVisible, setIframeVisible] = useState(false);
+  const iframeRef = useRef(null);
+
+  // iframe 关闭时刷新订阅状态
+  useEffect(() => {
+    if (!iframeVisible) {
+      setRefreshing(true);
+      reloadSubscriptionSelf?.().finally(() => setRefreshing(false));
+    }
+  }, [iframeVisible, reloadSubscriptionSelf]);
 
   const epayMethods = useMemo(() => getEpayMethods(payMethods), [payMethods]);
 
@@ -105,18 +114,42 @@ const SubscriptionPlansCard = ({
     setOpen(true);
   };
 
+  const handleRefresh = useCallback(() => {
+    if (refreshing) return;
+    setRefreshing(true);
+    setTimeout(() => {
+      reloadSubscriptionSelf?.();
+    }, 1000);
+  }, [refreshing, reloadSubscriptionSelf]);
+
   const closeBuy = () => {
     setOpen(false);
     setSelectedPlan(null);
     setPaying(false);
+    setRefreshing(true);
+    reloadSubscriptionSelf?.().finally(() => setRefreshing(false));
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
+  const handleIframeLoad = () => {
     try {
-      await reloadSubscriptionSelf?.();
-    } finally {
-      setRefreshing(false);
+      const iframe = iframeRef.current;
+      if (!iframe) return;
+      const iframeWindow = iframe.contentWindow;
+      const iframeLocation = iframeWindow?.location?.href || '';
+      // 检测是否跳转到支付结果页
+      if (iframeLocation.includes('/console/topup?pay=success')) {
+        setIframeVisible(false);
+        handleRefresh();
+        showSuccess(t('支付成功'));
+      } else if (iframeLocation.includes('/console/topup?pay=fail')) {
+        setIframeVisible(false);
+        showError(t('支付失败'));
+      } else if (iframeLocation.includes('/console/topup?pay=pending')) {
+        setIframeVisible(false);
+        showError(t('支付待处理'));
+      }
+    } catch {
+      // 跨域访问会被拒绝，忽略
     }
   };
 
@@ -734,7 +767,10 @@ const SubscriptionPlansCard = ({
       <Modal
         title={t('支付')}
         visible={iframeVisible}
-        onCancel={() => setIframeVisible(false)}
+        onCancel={() => {
+          setIframeVisible(false);
+          handleRefresh();
+        }}
         footer={null}
         size='large'
         centered
@@ -742,9 +778,11 @@ const SubscriptionPlansCard = ({
       >
         {iframeUrl ? (
           <iframe
+            ref={iframeRef}
             src={iframeUrl}
             style={{ width: '100%', height: '100%', border: 'none', borderRadius: '8px' }}
             title={t('支付页面')}
+            onLoad={handleIframeLoad}
           />
         ) : (
           <div className='flex items-center justify-center h-full'>

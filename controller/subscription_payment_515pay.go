@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -16,8 +17,8 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
@@ -165,19 +166,16 @@ func callPay515API(params map[string]string) (string, string, string, string, er
 
 	// 构建签名
 	signContent := buildSignContent(params)
-	logger.LogDebug(context.Background(), "[515pay] 签名内容: %s", signContent)
 	signature, err := signWithRSA(signContent, operation_setting.Pay515MerchantPrivateKey)
 	if err != nil {
 		return "", "", "", "", fmt.Errorf("签名失败: %v", err)
 	}
-	logger.LogDebug(context.Background(), "[515pay] 签名结果: %s", signature)
 
 	params["sign"] = signature
 	params["sign_type"] = "RSA"
 
 	// 构建请求体
 	requestBody := buildSignContentWithRaw(params)
-	logger.LogDebug(context.Background(), "[515pay] 请求体: %s", requestBody)
 
 	// 发送请求
 	resp, err := http.Post(apiUrl, "application/x-www-form-urlencoded", strings.NewReader(requestBody))
@@ -191,7 +189,6 @@ func callPay515API(params map[string]string) (string, string, string, string, er
 	if err != nil {
 		return "", "", "", "", fmt.Errorf("读取响应失败: %v", err)
 	}
-	logger.LogDebug(context.Background(), "[515pay] 响应: %s", string(body))
 
 	var result Pay515APIResponse
 	if err := common.Unmarshal(body, &result); err != nil {
@@ -211,11 +208,33 @@ func callPay515API(params map[string]string) (string, string, string, string, er
 	payUrl := result.PayUrl
 	// jump 类型用 pay_info，qrcode 类型为空（调用方拼接）
 	payInfo := result.PayInfo
-	// 暂时跳过验签
-	_ = verifyRSA(result.PayUrl+result.Msg+result.TradedNo, result.Sign, operation_setting.Pay515PlatformPublicKey)
-	logger.LogDebug(context.Background(), "[515pay] 响应详情: code=%d msg=%s payurl=%s pay_info=%s pay_type=%s trade_no=%s", result.Code, result.Msg, result.PayUrl, result.PayInfo, result.PayType, result.TradedNo)
+	// 验签 API 响应（用平台公钥验证平台私钥签的数据）
+	apiSignContent := result.PayUrl + result.Msg + result.TradedNo
+	_ = verifyRSA(apiSignContent, result.Sign, operation_setting.Pay515PlatformPublicKey)
 
 	return payUrl, payInfo, result.TradedNo, result.PayType, nil
+}
+
+// extractRawSign 从 RawQuery 中提取并 URL 解码 sign（%2B → +）
+func extractRawSign(rawQuery string) string {
+	// sign= 在 RawQuery 中的位置
+	idx := strings.Index(rawQuery, "sign=")
+	if idx < 0 {
+		return ""
+	}
+	// 从 sign= 之后到 & 或字符串结尾
+	start := idx + 5 // len("sign=")
+	end := len(rawQuery)
+	if amp := strings.Index(rawQuery[start:], "&"); amp >= 0 {
+		end = start + amp
+	}
+	// RawQuery 中 %2B 需要解码为 +（Base64 使用 + 而非 %2B）
+	signRaw := rawQuery[start:end]
+	signDecoded, err := url.QueryUnescape(signRaw)
+	if err != nil {
+		return signRaw // fallback
+	}
+	return signDecoded
 }
 
 // buildSignContent 构建签名字符串 (完全模拟 PHP http_build_query + RSA 签名)
@@ -274,7 +293,6 @@ func RFC1738Encode(s string) string {
 	}
 	return sb.String()
 }
-
 
 // signWithRSA 使用商户私钥签名 (PKCS1v15 + SHA256)
 func signWithRSA(data, privateKey string) (string, error) {
@@ -351,8 +369,19 @@ func verifyRSA(data, signBase64, publicKey string) bool {
 		return false
 	}
 
+	// 方式1: 直接用原始签名数据验签（假设签名中已包含 DigestInfo）
 	hashed := sha256.Sum256([]byte(data))
-	return rsa.VerifyPKCS1v15(rsaKey, 0, hashed[:], signature) == nil
+	err = rsa.VerifyPKCS1v15(rsaKey, 0, hashed[:], signature)
+	if err == nil {
+		return true
+	}
+
+	// 方式2: 传入 crypto.SHA256，让 PKCS1v15 自己添加 DigestInfo
+	err = rsa.VerifyPKCS1v15(rsaKey, crypto.SHA256, hashed[:], signature)
+	if err == nil {
+		return true
+	}
+	return false
 }
 
 // formatPEMKey 格式化PEM密钥字符串 (添加换行)
@@ -415,6 +444,23 @@ func Subscription515payNotify(c *gin.Context) {
 		return
 	}
 
+	// 检查交易状态
+	if params["trade_status"] != "TRADE_SUCCESS" {
+		_, _ = c.Writer.Write([]byte("fail"))
+		return
+	}
+
+	outTradeNo := params["out_trade_no"]
+	LockOrder(outTradeNo)
+	defer UnlockOrder(outTradeNo)
+
+	// 先查订单状态（幂等：已完成则直接返回 success）
+	order := model.GetSubscriptionOrderByTradeNo(outTradeNo)
+	if order != nil && order.Status == common.TopUpStatusSuccess {
+		_, _ = c.Writer.Write([]byte("success"))
+		return
+	}
+
 	// 检查时间戳 (允许5分钟内)
 	timestamp, ok := params["timestamp"]
 	if !ok {
@@ -427,16 +473,6 @@ func Subscription515payNotify(c *gin.Context) {
 		_, _ = c.Writer.Write([]byte("fail"))
 		return
 	}
-
-	// 检查交易状态
-	if params["trade_status"] != "TRADE_SUCCESS" {
-		_, _ = c.Writer.Write([]byte("fail"))
-		return
-	}
-
-	outTradeNo := params["out_trade_no"]
-	LockOrder(outTradeNo)
-	defer UnlockOrder(outTradeNo)
 
 	notifyData, _ := common.Marshal(params)
 	if err := model.CompleteSubscriptionOrder(outTradeNo, string(notifyData)); err != nil {
@@ -456,6 +492,8 @@ func verify515payNotify(params map[string]string) bool {
 
 	// 构建待验签内容 (排除sign和sign_type)
 	signContent := buildSignContent(params)
+	logger.LogDebug(context.Background(), "[515pay Notify] 验签内容: %s", signContent)
+	logger.LogDebug(context.Background(), "[515pay Notify] 原始sign: %s", sign)
 	return verifyRSA(signContent, sign, operation_setting.Pay515PlatformPublicKey)
 }
 
@@ -475,9 +513,15 @@ func Subscription515payReturn(c *gin.Context) {
 			}
 		}
 	} else {
+		// 注意：sign 参数的 base64 可能包含 + 字符（%2B 编码），
+		// c.Request.URL.Query() 会把它解码成空格，导致验签失败。
+		// 从 RawQuery 提取 sign，其余参数正常解析。
+		rawSign := extractRawSign(c.Request.URL.RawQuery)
 		params = make(map[string]string)
 		for k, v := range c.Request.URL.Query() {
-			if len(v) > 0 {
+			if k == "sign" && rawSign != "" {
+				params[k] = rawSign // 用原始未解码的 sign
+			} else if len(v) > 0 {
 				params[k] = v[0]
 			}
 		}
@@ -488,9 +532,27 @@ func Subscription515payReturn(c *gin.Context) {
 		return
 	}
 
-	// 验证签名
+	signContent := buildSignContent(params)
+	logger.LogDebug(context.Background(), "[515pay Return] 所有参数: %v", params)
+	logger.LogDebug(context.Background(), "[515pay Return] 验签内容: %s", signContent)
+
 	if !verify515payNotify(params) {
-		c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
+		logger.LogDebug(context.Background(), "[515pay Return] 验签失败，查库决定状态")
+		// 验签失败时，查库决定状态
+		outTradeNo := params["out_trade_no"]
+		order := model.GetSubscriptionOrderByTradeNo(outTradeNo)
+		if order == nil {
+			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
+			return
+		}
+		switch order.Status {
+		case common.TopUpStatusSuccess:
+			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=success")
+		case common.TopUpStatusPending:
+			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=pending")
+		default:
+			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
+		}
 		return
 	}
 
@@ -500,6 +562,75 @@ func Subscription515payReturn(c *gin.Context) {
 		defer UnlockOrder(outTradeNo)
 		notifyData, _ := common.Marshal(params)
 		if err := model.CompleteSubscriptionOrder(outTradeNo, string(notifyData)); err != nil {
+			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
+			return
+		}
+		c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=success")
+		return
+	}
+	c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=pending")
+}
+
+// Topup515payReturn 处理用户充值支付返回
+func Topup515payReturn(c *gin.Context) {
+	var params map[string]string
+
+	if c.Request.Method == "POST" {
+		if err := c.Request.ParseForm(); err != nil {
+			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
+			return
+		}
+		params = make(map[string]string)
+		for k, v := range c.Request.PostForm {
+			if len(v) > 0 {
+				params[k] = v[0]
+			}
+		}
+	} else {
+		rawSign := extractRawSign(c.Request.URL.RawQuery)
+		params = make(map[string]string)
+		for k, v := range c.Request.URL.Query() {
+			if k == "sign" && rawSign != "" {
+				params[k] = rawSign
+			} else if len(v) > 0 {
+				params[k] = v[0]
+			}
+		}
+	}
+
+	if len(params) == 0 {
+		c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
+		return
+	}
+
+	signContent := buildSignContent(params)
+	logger.LogDebug(context.Background(), "[Topup 515pay Return] 所有参数: %v", params)
+	logger.LogDebug(context.Background(), "[Topup 515pay Return] 验签内容: %s", signContent)
+
+	if !verify515payNotify(params) {
+		logger.LogDebug(context.Background(), "[Topup 515pay Return] 验签失败，查库决定状态")
+		outTradeNo := params["out_trade_no"]
+		topUp := model.GetTopUpByTradeNo(outTradeNo)
+		if topUp == nil {
+			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
+			return
+		}
+		switch topUp.Status {
+		case common.TopUpStatusSuccess:
+			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=success")
+		case common.TopUpStatusPending:
+			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=pending")
+		default:
+			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
+		}
+		return
+	}
+
+	if params["trade_status"] == "TRADE_SUCCESS" {
+		outTradeNo := params["out_trade_no"]
+		LockOrder(outTradeNo)
+		defer UnlockOrder(outTradeNo)
+		if err := model.ManualCompleteTopUp(outTradeNo); err != nil {
 			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
 			return
 		}
@@ -562,7 +693,12 @@ func RequestTopup515pay(c *gin.Context) {
 	}
 
 	callBackAddress := service.GetCallbackAddress()
-	notifyUrl, err := url.Parse(callBackAddress + "/api/user/topup/515pay/notify")
+	returnUrl, err := url.Parse(callBackAddress + "/api/topup/515pay/return")
+	if err != nil {
+		common.ApiErrorMsg(c, "回调地址配置错误")
+		return
+	}
+	notifyUrl, err := url.Parse(callBackAddress + "/api/topup/515pay/notify")
 	if err != nil {
 		common.ApiErrorMsg(c, "回调地址配置错误")
 		return
@@ -598,6 +734,7 @@ func RequestTopup515pay(c *gin.Context) {
 		"name":         fmt.Sprintf("充值:%d", req.Amount),
 		"money":        fmt.Sprintf("%.2f", payMoney),
 		"notify_url":   notifyUrl.String(),
+		"return_url":   returnUrl.String(),
 		"type":         req.PaymentMethod,
 		"clientip":     c.ClientIP(),
 	}
