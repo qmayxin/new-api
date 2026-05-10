@@ -9,6 +9,10 @@ build
 *.db-journal
 logs
 #web/dist
+web/default/dist
+web/classic/dist
+web/node_modules
+web/dist
 .env
 one-api
 new-api
@@ -19,9 +23,9 @@ tiktoken_cache
 .gocache
 .gomodcache/
 .cache
-web/bun.lock
 plans
 .claude
+.cursor
 .playwright-mcp
 
 electron/node_modules
@@ -30,7 +34,7 @@ data/
 .gomodcache/
 .gocache-temp
 .gopath
-
+.test
 token_estimator_test.go
-
+skills-lock.json
 tmp/
