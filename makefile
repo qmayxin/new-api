@@ -1,4 +1,4 @@
-FRONTEND_DIR = ./web/default
+FRONTEND_DIR = ./web/classic
 FRONTEND_CLASSIC_DIR = ./web/classic
 BACKEND_DIR = .
 
