@@ -10,13 +10,13 @@ build
 logs
 #web/dist
 #web/default/dist
-web/classic/dist
+#web/classic/dist
 web/classic/node_modules
 web/default/node_modules
 #web/dist
 .env
 one-api
-new-api
+#new-api
 /__debug_bin*
 .DS_Store
 tiktoken_cache

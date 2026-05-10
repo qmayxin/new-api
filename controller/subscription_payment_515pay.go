@@ -139,7 +139,7 @@ func SubscriptionRequest515pay(c *gin.Context) {
 	// 调用515pay API (返回 payurl, pay_info, trade_no, pay_type, error)
 	payUrl, payInfo, platformTradeNo, payType, err := callPay515API(params)
 	if err != nil {
-		_ = model.ExpireSubscriptionOrder(tradeNo)
+		_ = model.ExpireSubscriptionOrder(tradeNo, "515pay")
 		common.ApiErrorMsg(c, "拉起支付失败: "+err.Error())
 		return
 	}
@@ -475,7 +475,7 @@ func Subscription515payNotify(c *gin.Context) {
 	}
 
 	notifyData, _ := common.Marshal(params)
-	if err := model.CompleteSubscriptionOrder(outTradeNo, string(notifyData)); err != nil {
+	if err := model.CompleteSubscriptionOrder(outTradeNo, string(notifyData), "515pay", "515pay"); err != nil {
 		_, _ = c.Writer.Write([]byte("fail"))
 		return
 	}
@@ -561,7 +561,7 @@ func Subscription515payReturn(c *gin.Context) {
 		LockOrder(outTradeNo)
 		defer UnlockOrder(outTradeNo)
 		notifyData, _ := common.Marshal(params)
-		if err := model.CompleteSubscriptionOrder(outTradeNo, string(notifyData)); err != nil {
+		if err := model.CompleteSubscriptionOrder(outTradeNo, string(notifyData), "515pay", "515pay"); err != nil {
 			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
 			return
 		}
@@ -630,7 +630,7 @@ func Topup515payReturn(c *gin.Context) {
 		outTradeNo := params["out_trade_no"]
 		LockOrder(outTradeNo)
 		defer UnlockOrder(outTradeNo)
-		if err := model.ManualCompleteTopUp(outTradeNo); err != nil {
+		if err := model.ManualCompleteTopUp(outTradeNo, c.ClientIP()); err != nil {
 			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
 			return
 		}
