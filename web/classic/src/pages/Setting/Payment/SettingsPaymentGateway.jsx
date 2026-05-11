@@ -18,15 +18,17 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Banner, Button, Form, Row, Col, Spin } from '@douyinfe/semi-ui';
+import { Banner, Button, Form, Row, Col, Spin, Typography } from '@douyinfe/semi-ui';
 import {
   API,
   removeTrailingSlash,
   showError,
   showSuccess,
+  toBoolean,
 } from '../../../helpers';
 import { useTranslation } from 'react-i18next';
 import { Info } from 'lucide-react';
+const { Text } = Typography;
 
 export default function SettingsPaymentGateway(props) {
   const { t } = useTranslation();
@@ -38,7 +40,14 @@ export default function SettingsPaymentGateway(props) {
     EpayKey: '',
     Price: 7.3,
     MinTopUp: 1,
+    // 515pay配置
+    Pay515Enabled: false,
+    Pay515ApiUrl: '',
+    Pay515Pid: '',
+    Pay515PlatformPublicKey: '',
+    Pay515MerchantPrivateKey: '',
   });
+  const [originInputs, setOriginInputs] = useState({});
   const formApiRef = useRef(null);
 
   useEffect(() => {
@@ -55,9 +64,16 @@ export default function SettingsPaymentGateway(props) {
           props.options.MinTopUp !== undefined
             ? parseFloat(props.options.MinTopUp)
             : 1,
+        // 515pay配置
+        Pay515Enabled: toBoolean(props.options.Pay515Enabled),
+        Pay515ApiUrl: props.options.Pay515ApiUrl || '',
+        Pay515Pid: props.options.Pay515Pid || '',
+        Pay515PlatformPublicKey: props.options.Pay515PlatformPublicKey || '',
+        Pay515MerchantPrivateKey: props.options.Pay515MerchantPrivateKey || '',
       };
 
       setInputs(currentInputs);
+      setOriginInputs({ ...currentInputs });
       formApiRef.current.setValues(currentInputs);
     }
   }, [props.options]);
@@ -91,6 +107,27 @@ export default function SettingsPaymentGateway(props) {
         options.push({ key: 'MinTopUp', value: inputs.MinTopUp.toString() });
       }
 
+      // 515pay配置
+      options.push({
+        key: 'Pay515Enabled',
+        value: inputs.Pay515Enabled ? 'true' : 'false',
+      });
+      if (inputs.Pay515ApiUrl !== originInputs.Pay515ApiUrl) {
+        options.push({
+          key: 'Pay515ApiUrl',
+          value: removeTrailingSlash(inputs.Pay515ApiUrl),
+        });
+      }
+      if (inputs.Pay515Pid !== originInputs.Pay515Pid) {
+        options.push({ key: 'Pay515Pid', value: inputs.Pay515Pid });
+      }
+      if (inputs.Pay515PlatformPublicKey !== originInputs.Pay515PlatformPublicKey) {
+        options.push({ key: 'Pay515PlatformPublicKey', value: inputs.Pay515PlatformPublicKey });
+      }
+      if (inputs.Pay515MerchantPrivateKey !== originInputs.Pay515MerchantPrivateKey) {
+        options.push({ key: 'Pay515MerchantPrivateKey', value: inputs.Pay515MerchantPrivateKey });
+      }
+
       const requestQueue = options.map((opt) =>
         API.put('/api/option/', {
           key: opt.key,
@@ -107,6 +144,7 @@ export default function SettingsPaymentGateway(props) {
         });
       } else {
         showSuccess(t('更新成功'));
+        setOriginInputs({ ...inputs });
         props.refresh && props.refresh();
       }
     } catch (error) {
@@ -177,6 +215,58 @@ export default function SettingsPaymentGateway(props) {
           </Row>
           <Button onClick={submitPayAddress} style={{ marginTop: 16 }}>
             {t('更新易支付设置')}
+          </Button>
+        </Form.Section>
+
+        {/* 515pay配置 */}
+        <Form.Section text={t('515pay支付设置')}>
+          <Text type='tertiary' style={{ display: 'block', marginBottom: 12 }}>
+            {t('（515pay支付接口，支持RSA签名验签）')}
+          </Text>
+          <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}>
+            <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+              <Form.Switch
+                field='Pay515Enabled'
+                label={t('启用515pay')}
+              />
+            </Col>
+            <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+              <Form.Input
+                field='Pay515ApiUrl'
+                label={t('515pay接口地址')}
+                placeholder={t('例如：https://pay.515shun.fun')}
+              />
+            </Col>
+            <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+              <Form.Input
+                field='Pay515Pid'
+                label={t('515pay商户ID')}
+                placeholder={t('商户ID')}
+              />
+            </Col>
+          </Row>
+          <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }} style={{ marginTop: 16 }}>
+            <Col span={24}>
+              <Form.TextArea
+                field='Pay515PlatformPublicKey'
+                label={t('515pay平台公钥')}
+                placeholder={t('平台RSA公钥')}
+                autosize
+              />
+            </Col>
+          </Row>
+          <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }} style={{ marginTop: 16 }}>
+            <Col span={24}>
+              <Form.TextArea
+                field='Pay515MerchantPrivateKey'
+                label={t('515pay商户私钥')}
+                placeholder={t('商户RSA私钥')}
+                autosize
+              />
+            </Col>
+          </Row>
+          <Button onClick={submitPayAddress} style={{ marginTop: 16 }}>
+            {t('更新515pay设置')}
           </Button>
         </Form.Section>
       </Form>
