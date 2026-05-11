@@ -537,12 +537,22 @@ func Subscription515payReturn(c *gin.Context) {
 	signContent := buildSignContent(params)
 	logger.LogDebug(context.Background(), "[515pay Return] 所有参数: %v", params)
 	logger.LogDebug(context.Background(), "[515pay Return] 验签内容: %s", signContent)
+	logger.LogDebug(context.Background(), "[515pay Return] sign参数: %s", params["sign"])
 
-	if !verify515payNotify(params) {
+	verified := verify515payNotify(params)
+	logger.LogDebug(context.Background(), "[515pay Return] 验签结果: %v", verified)
+	if !verified {
 		logger.LogDebug(context.Background(), "[515pay Return] 验签失败，查库决定状态")
 		// 验签失败时，查库决定状态
 		outTradeNo := params["out_trade_no"]
 		order := model.GetSubscriptionOrderByTradeNo(outTradeNo)
+		var orderStatus string
+		if order != nil {
+			orderStatus = order.Status
+		} else {
+			orderStatus = "nil"
+		}
+		logger.LogDebug(context.Background(), "[515pay Return] 订单状态: order=%v, status=%s", order != nil, orderStatus)
 		if order == nil {
 			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
 			return
