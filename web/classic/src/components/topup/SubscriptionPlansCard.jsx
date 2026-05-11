@@ -117,9 +117,7 @@ const SubscriptionPlansCard = ({
   const handleRefresh = useCallback(() => {
     if (refreshing) return;
     setRefreshing(true);
-    setTimeout(() => {
-      reloadSubscriptionSelf?.();
-    }, 1000);
+    reloadSubscriptionSelf?.().finally(() => setRefreshing(false));
   }, [refreshing, reloadSubscriptionSelf]);
 
   const closeBuy = () => {

@@ -635,6 +635,7 @@ const TopUp = () => {
         const allSubs = res.data.data?.all_subscriptions || [];
         setAllSubscriptions(allSubs);
       }
+      return res;
     } catch (e) {
       // ignore
     }
