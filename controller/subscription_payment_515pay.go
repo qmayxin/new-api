@@ -569,17 +569,21 @@ func Subscription515payReturn(c *gin.Context) {
 	}
 
 	if params["trade_status"] == "TRADE_SUCCESS" {
+		logger.LogDebug(context.Background(), "[515pay Return] 进入TRADE_SUCCESS分支")
 		outTradeNo := params["out_trade_no"]
 		LockOrder(outTradeNo)
 		defer UnlockOrder(outTradeNo)
 		notifyData, _ := common.Marshal(params)
 		if err := model.CompleteSubscriptionOrder(outTradeNo, string(notifyData), "515pay", "515pay"); err != nil {
+			logger.LogDebug(context.Background(), "[515pay Return] CompleteSubscriptionOrder失败: %v", err)
 			c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
 			return
 		}
+		logger.LogDebug(context.Background(), "[515pay Return] 订单完成，重定向到success")
 		c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=success")
 		return
 	}
+	logger.LogDebug(context.Background(), "[515pay Return] trade_status不是TRADE_SUCCESS: %s", params["trade_status"])
 	c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=pending")
 }
 
