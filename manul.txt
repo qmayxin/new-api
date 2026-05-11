@@ -1,0 +1,19 @@
+
+cd web
+bun install
+
+bun run dev
+
+bun run build
+可以不运行前端
+
+go run main.go
+
+go build -o new-api
+把前端静态文件嵌入new-api二进制文件了，改logo.png需要rebuild
+
+nohup ./new-api > new-api.log 2>&1 &
+netstat -lntp
+kill -p
+tail -f new-api.log
+
