@@ -228,8 +228,10 @@ func extractRawSign(rawQuery string) string {
 	if amp := strings.Index(rawQuery[start:], "&"); amp >= 0 {
 		end = start + amp
 	}
-	// RawQuery 中 %2B 需要解码为 +（Base64 使用 + 而非 %2B）
+	// RawQuery 中 + 会被 QueryUnescape 转为空格，但 Base64 使用 + 字符
+	// 所以先替换 + 为 %2B，再解码
 	signRaw := rawQuery[start:end]
+	signRaw = strings.ReplaceAll(signRaw, "+", "%2B")
 	signDecoded, err := url.QueryUnescape(signRaw)
 	if err != nil {
 		return signRaw // fallback
