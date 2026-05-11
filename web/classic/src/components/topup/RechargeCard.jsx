@@ -316,7 +316,7 @@ const RechargeCard = ({
                       style={{ width: '100%' }}
                     />
                   </Col>
-                  {regularPayMethods.length > 0 && (
+                  {regularPayMethods.length > 0 && false && (
                     <Col xs={24} sm={24} md={24} lg={14} xl={14}>
                       <Form.Slot label={t('选择支付方式')}>
                         <Space wrap>
