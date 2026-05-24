@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naxyx API 配置大全</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* 主色调 - 品牌蓝紫色系 */
+            --primary-color: #4f46e5;
+            --primary-hover: #6366f1;
+            --primary-light: rgba(79, 70, 229, 0.1);
+            
+            /* 背景色 - 浅色主题 */
+            --bg-dark: #ffffff;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-sidebar: #ffffff;
+            --bg-sidebar-hover: #f1f5f9;
+            
+            /* 文字色 */
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            
+            /* 边框和分割线 */
+            --border-color: #e2e8f0;
+            --border-light: #cbd5e1;
+            
+            /* 代码块配色 */
+            --code-bg: #f8fafc;
+            --code-keyword: #7c3aed;
+            --code-string: #059669;
+            --code-function: #2563eb;
+            --code-comment: #94a3b8;
+            --code-number: #ea580c;
+            
+            /* 链接色 */
+            --link-color: #2563eb;
+            --link-hover: #3b82f6;
+            
+            /* 警告和提示 */
+            --warning-bg: rgba(245, 158, 11, 0.08);
+            --warning-border: rgba(245, 158, 11, 0.2);
+            --warning-text: #d97706;
+            
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --success-border: rgba(16, 185, 129, 0.25);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.7;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 24px 0;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .sidebar-logo {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-logo-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sidebar-logo-icon img {
+            max-width: 100%;
+            max-height: 100%;
+            border: none;
+            margin: 0;
+            border-radius: 6px;
+        }
+
+        .sidebar-nav {
+            padding: 0 12px;
+        }
+
+        .nav-section {
+            margin-bottom: 8px;
+        }
+
+        .nav-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            padding: 12px 12px 6px;
+            margin-top: 12px;
+        }
+
+        .nav-title:first-child {
+            margin-top: 0;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 8px 14px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-radius: 6px;
+            transition: all 0.18s ease;
+            margin: 3px 0;
+            font-weight: 450;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-sidebar-hover);
+        }
+
+        .nav-link.active {
+            color: var(--primary-color);
+            background: var(--primary-light);
+            font-weight: 600;
+        }
+
+        .nav-link.level-2 {
+            padding-left: 28px;
+            font-size: 0.86rem;
+            color: var(--text-muted);
+        }
+
+        .nav-link.level-2:hover {
+            color: var(--text-secondary);
+        }
+
+        .nav-link.level-2.active {
+            color: var(--primary-color);
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 60px 48px;
+        }
+
+        /* 头部 */
+        header {
+            margin-bottom: 48px;
+            padding: 32px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, rgba(168, 85, 247, 0.05) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #1e293b 0%, var(--primary-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .warning-badge {
+            display: inline-block;
+            background: var(--warning-bg);
+            color: var(--warning-text);
+            border: 1px solid var(--warning-border);
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.875rem;
+            margin-top: 16px;
+        }
+
+        /* 标题样式 */
+        h2 {
+            font-size: 1.75rem;
+            margin: 56px 0 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        h3 {
+            font-size: 1.35rem;
+            margin: 36px 0 16px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        h4 {
+            font-size: 1.1rem;
+            margin: 24px 0 12px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* 段落和列表 */
+        p {
+            margin: 16px 0;
+            color: var(--text-secondary);
+        }
+
+        ul, ol {
+            margin: 16px 0 16px 24px;
+            color: var(--text-secondary);
+        }
+
+        li {
+            margin: 10px 0;
+        }
+
+        /* 链接 */
+        a {
+            color: var(--link-color);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: var(--link-hover);
+            text-decoration: underline;
+        }
+
+        /* 高亮框 */
+        .highlight-box {
+            background: var(--success-bg);
+            border: 1px solid var(--success-border);
+            padding: 20px 24px;
+            border-radius: 10px;
+            margin: 24px 0;
+        }
+
+        .highlight-text {
+            background: var(--primary-light);
+            color: var(--primary-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        /* 代码块 */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        code {
+            font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+            font-size: 0.9rem;
+        }
+
+        pre code {
+            color: #1e293b;
+        }
+
+        :not(pre) > code {
+            background: var(--code-bg);
+            padding: 3px 8px;
+            border-radius: 5px;
+            color: #7c3aed;
+            border: 1px solid var(--border-color);
+        }
+
+        /* 图片 */
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            margin: 20px 0;
+        }
+
+        /* 卡片 */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 24px;
+            margin: 20px 0;
+        }
+
+        /* 页脚 */
+        footer {
+            margin-top: 80px;
+            padding-top: 40px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .support-box {
+            background: var(--primary-light);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 28px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .support-qq {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            margin-top: 8px;
+        }
+
+        /* 移动端菜单按钮 */
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 200;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+        }
+
+        .menu-toggle span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--text-primary);
+            margin: 5px 0;
+            transition: 0.3s;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 900px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            .container {
+                padding: 60px 20px 40px;
+            }
+
+            header {
+                padding: 24px;
+                margin-top: 20px;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            h2 {
+                font-size: 1.4rem;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 10px 12px;
+            }
+        }
+
+        /* 侧边栏覆盖层 */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 99;
+        }
+
+        .sidebar-overlay.open {
+            display: block;
+        }
+
+        /* 章节锚点 */
+        .section-anchor {
+            scroll-margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 移动端菜单按钮 -->
+    <button class="menu-toggle" onclick="toggleSidebar()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <!-- 侧边栏覆盖层 -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- 侧边栏 -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <div class="sidebar-logo-icon">
+                    <img src="/logo.png" alt="Naxyx Logo">
+                </div>
+                Naxyx Docs
+            </div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-title">快速开始</div>
+            <a href="#quick-start" class="nav-link">快速开始</a>
+            <a href="#step-1" class="nav-link level-2">第一步：注册账号</a>
+            <a href="#step-2" class="nav-link level-2">第二步：API 信息</a>
+            <a href="#models" class="nav-link level-2">可用模型</a>
+            <a href="#trial" class="nav-link level-2">支持试用</a>
+
+            <div class="nav-title">配置教程</div>
+            <a href="#claude-code" class="nav-link">Claude Code</a>
+            <a href="#cline" class="nav-link">Cline / Kilo Code</a>
+            <a href="#cherry-studio" class="nav-link">Cherry Studio</a>
+            <a href="#codex-cli" class="nav-link">Codex CLI</a>
+            <a href="#openclaw" class="nav-link">OpenClaw</a>
+            <a href="#sillytavern" class="nav-link">酒馆 SillyTavern</a>
+            <a href="#code" class="nav-link">代码中调用</a>
+
+            <div class="nav-title">参考</div>
+            <a href="#faq" class="nav-link">常见问题</a>
+            <a href="#support" class="nav-link">售后支持</a>
+        </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+        <div class="container">
+            <header>
+                <h1>Naxyx API 配置大全</h1>
+                <p>我们大约持有价值100万人民币的显卡，算力充沛，稳定。</p>
+                <div class="warning-badge">小白请勿购买token，请看清楚文档再购买</div>
+            </header>
+
+            <!-- 快速开始 -->
+            <section id="quick-start" class="section-anchor">
+                <h2>快速开始</h2>
+            </section>
+
+            <section id="step-1" class="section-anchor">
+                <h3>第一步：注册账号 + 获取密钥</h3>
+                <ol>
+                    <li>访问 <a href="https://api.naxyx.com" target="_blank">Naxyx API</a>，注册/登录账号 <a href="https://api.naxyx.com" target="_blank">https://api.naxyx.com</a></li>
+                    <li>进入「令牌管理」→「创建令牌」：一个apikey，接入所有大模型</li>
+                    <li>复制生成的 <code>sk-xxx</code> 密钥，下一步配置客户端要用</li>
+                </ol>
+            </section>
+
+            <section id="step-2" class="section-anchor">
+                <h3>第二步：记住你的 API 信息</h3>
+                <table>
+                    <tr>
+                        <th>配置项</th>
+                        <th>值</th>
+                    </tr>
+                    <tr>
+                        <td><strong>API BaseURL</strong></td>
+                        <td><code>https://api.naxyx.com</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>API Key</strong></td>
+                        <td><code>sk-xxx</code>（你创建的令牌）</td>
+                    </tr>
+                </table>
+                <img src="static/naxyx-help-1.png" alt="API配置界面">
+            </section>
+
+            <section id="models" class="section-anchor">
+                <h3>可用模型</h3>
+                <p>价格综合下来，<span class="highlight-text">国产模型6至8毛人民币=100万token，不限速，不排队；</span>GPT、Claude系列模型，一手资源、价格极低，<span class="highlight-text">gpt-5.5纯血版100%无掺假非常丝滑可接入CodeX</span></p>
+                <table>
+                    <tr>
+                        <th>模型</th>
+                        <th>模型 ID</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td>Claude</td>
+                        <td><code>claude-opus-4-7</code><br><code>claude-opus-4-6</code><br><code>claude-sonnet-4-6</code></td>
+                        <td>Anthropic Claude系列最新模型</td>
+                    </tr>
+                    <tr>
+                        <td>MiniMax-M2.7-highspeed</td>
+                        <td><code>MiniMax-M2.7-highspeed</code></td>
+                        <td>均衡性价比，<span class="highlight-text">响应速度极快</span>，主推</td>
+                    </tr>
+                    <tr>
+                        <td>Doubao-seed-2.0-code</td>
+                        <td><code>ark-code-latest</code></td>
+                        <td>豆包Seed Code编程模型最新版</td>
+                    </tr>
+                    <tr>
+                        <td>DeepSeek-v4-pro</td>
+                        <td><code>deepseek-v4-pro</code></td>
+                        <td>DeepSeek V4 Pro最新版，<span class="highlight-text">极速稳定，不排队，主推</span></td>
+                    </tr>
+                    <tr>
+                        <td>GPT-5.5</td>
+                        <td><code>gpt-5.5</code><br><code>gpt-5.4</code><br><code>gpt-image-2</code></td>
+                        <td>OpenAI 最新模型，<span class="highlight-text">一手资源，性价比极高，主推</span></td>
+                    </tr>
+                    <tr>
+                        <td>Qwen3.6</td>
+                        <td><code>Qwen3.6-35B-A3B</code></td>
+                        <td>阿里通义千问3.6最新模型，<span class="highlight-text">极速稳定</span>、均衡，多模态、可识别图片</td>
+                    </tr>
+                    <tr>
+                        <td>Grok-4.3</td>
+                        <td><code>grok-4.3</code></td>
+                        <td>SpaceXAI系列最新模型</td>
+                    </tr>
+                    <tr>
+                        <td>Gemini-3</td>
+                        <td><code>gemini-3.5-flash</code><br><code>gemini-3.1-pro-preview</code></td>
+                        <td>Google Gemini系列最新模型</td>
+                    </tr>
+                </table>
+            </section>
+
+            <section id="trial" class="section-anchor">
+                <div class="highlight-box">
+                    <h3 style="margin-top: 0;">支持试用</h3>
+                    <p style="font-size: 1.25rem; font-weight: 700; margin: 8px 0 0;">1元RMB，试用10美金额度</p>
+                </div>
+                <img src="static/naxyx-help-2.png" alt="试用界面">
+                <img src="static/naxyx-help-3.png" alt="模型展示">
+            </section>
+
+            <!-- Claude Code -->
+            <section id="claude-code" class="section-anchor">
+                <h2>一、Claude Code 配置教程</h2>
+                <p>Claude Code 使用 Anthropic 协议，配置方式如下：</p>
+
+                <h3>方法一：CC Switch 一键配置（推荐）</h3>
+                <p>CC Switch 是 Claude Code 的懒人配置桌面工具：</p>
+                <ul>
+                    <li>下载地址：<a href="https://github.com/farion1231/cc-switch" target="_blank">GitHub - cc-switch</a></li>
+                    <li>打开 CC Switch → 输入 API 信息：
+                        <ul>
+                            <li><strong>请求地址</strong>：<code>https://api.naxyx.com</code>（不带 <code>/v1</code>）</li>
+                            <li><strong>API Key</strong>：<code>sk-xxx</code></li>
+                            <li><strong>模型</strong>：<code>claude-opus-4-6</code></li>
+                        </ul>
+                    </li>
+                    <li>点击「测试」→ 弹窗显示成功 → 点击「使用」</li>
+                </ul>
+
+                <h3>方法二：手动配置环境变量</h3>
+                <p>在 Claude Code 的 settings 文件中添加：</p>
+                <pre><code>{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "sk-xxx",
+    "ANTHROPIC_BASE_URL": "https://api.naxyx.com",
+    "ANTHROPIC_MODEL": "claude-opus-4-6"
+  }
+}</code></pre>
+                <p>配置完成后重启 Claude Code 即可。</p>
+            </section>
+
+            <!-- Cline -->
+            <section id="cline" class="section-anchor">
+                <h2>二、Cline / Kilo Code 插件配置教程</h2>
+                <p>适用于 VS Code、Cursor 等编辑器中的 Cline 或 Kilo Code 插件。</p>
+                <ol>
+                    <li>打开插件设置</li>
+                    <li>API Provider 选择 <strong>OpenAI Compatible</strong></li>
+                    <li>填入以下信息：
+                        <ul>
+                            <li><strong>Base URL</strong>：<code>https://api.naxyx.com/v1</code></li>
+                            <li><strong>API Key</strong>：<code>sk-xxx</code></li>
+                            <li><strong>Model ID</strong>：<code>claude-opus-4-6</code>（或其他可用模型）</li>
+                        </ul>
+                    </li>
+                    <li>保存即可使用</li>
+                </ol>
+            </section>
+
+            <!-- Cherry Studio -->
+            <section id="cherry-studio" class="section-anchor">
+                <h2>三、Cherry Studio 配置教程</h2>
+                <p>Cherry Studio 下载地址：<a href="https://www.cherry-ai.com/" target="_blank">https://www.cherry-ai.com/</a></p>
+                <ol>
+                    <li>打开 Cherry Studio → 设置 → 模型服务商</li>
+                    <li>添加自定义服务商：
+                        <ul>
+                            <li><strong>类型</strong>：OpenAI Compatible</li>
+                            <li><strong>API 地址</strong>：<code>https://api.naxyx.com/v1</code></li>
+                            <li><strong>API Key</strong>：<code>sk-xxx</code></li>
+                        </ul>
+                    </li>
+                    <li>添加模型 → 输入模型 ID（如 <code>claude-opus-4-6</code>）</li>
+                    <li>保存后即可在对话中选择使用</li>
+                </ol>
+            </section>
+
+            <!-- Codex CLI -->
+            <section id="codex-cli" class="section-anchor">
+                <h2>四、Codex CLI 配置教程</h2>
+                <p>如果你需要使用 OpenAI Codex CLI 配合 GPT-5.5 模型：</p>
+
+                <h3>4.1 安装 Codex CLI</h3>
+                <pre><code>npm i -g @openai/codex</code></pre>
+
+                <h3>4.2 配置文件</h3>
+                <p>编辑 <code>~/.codex/config.toml</code>（Mac/Linux）或 <code>C:\Users\你的用户名\.codex\config.toml</code>（Windows）：</p>
+                <pre><code>model = "gpt-5.5"
+model_provider = "naxyx"
+
+[model_providers.naxyx]
+name = "naxyx"
+base_url = "https://api.naxyx.com"
+wire_api = "responses"
+requires_openai_auth = true</code></pre>
+
+                <p>编辑 <code>~/.codex/auth.json</code>：</p>
+                <pre><code>{
+  "OPENAI_API_KEY": "sk-xxx"
+}</code></pre>
+
+                <h3>4.3 启动</h3>
+                <pre><code>codex --yolo</code></pre>
+            </section>
+
+            <!-- OpenClaw -->
+            <section id="openclaw" class="section-anchor">
+                <h2>五、OpenClaw（小龙虾）配置教程</h2>
+                <p>编辑配置文件 <code>~/.openclaw/openclaw.json</code>，在 models 部分添加：</p>
+                <pre><code>{
+  "models": {
+    "providers": {
+      "naxyx": {
+        "baseUrl": "https://api.naxyx.com/v1",
+        "apiKey": "sk-xxx",
+        "api": "anthropic-messages",
+        "models": [
+          {
+            "id": "claude-opus-4-6",
+            "name": "Claude Opus 4.6",
+            "reasoning": true,
+            "contextWindow": 200000,
+            "maxTokens": 128000
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "naxyx/claude-opus-4-6"
+      }
+    }
+  }
+}</code></pre>
+                <p>保存后 Gateway 自动生效。验证：<code>openclaw models status</code></p>
+            </section>
+
+            <!-- SillyTavern -->
+            <section id="sillytavern" class="section-anchor">
+                <h2>六、酒馆 SillyTavern 配置教程</h2>
+                <ol>
+                    <li>打开酒馆 → 设置 → API 连接</li>
+                    <li>选择 <strong>Chat Completion</strong> → <strong>OpenAI Compatible</strong></li>
+                    <li>填入：
+                        <ul>
+                            <li><strong>Base URL</strong>：<code>https://api.naxyx.com/v1</code></li>
+                            <li><strong>API Key</strong>：<code>sk-xxx</code></li>
+                            <li><strong>Model</strong>：手动输入 <code>claude-opus-4-6</code></li>
+                        </ul>
+                    </li>
+                    <li>点击连接测试</li>
+                </ol>
+            </section>
+
+            <!-- 代码调用 -->
+            <section id="code" class="section-anchor">
+                <h2>七、代码中直接调用</h2>
+
+                <h3>Python（OpenAI SDK）</h3>
+                <pre><code>from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-xxx",
+    base_url="https://api.naxyx.com/v1"
+)
+
+response = client.chat.completions.create(
+    model="claude-opus-4-6",
+    messages=[{"role": "user", "content": "你好"}]
+)
+
+print(response.choices[0].message.content)</code></pre>
+
+                <h3>cURL</h3>
+                <pre><code>curl https://api.naxyx.com/v1/chat/completions \
+  -H "Content-Type": "application/json" \
+  -H "Authorization": "Bearer sk-xxx" \
+  -d '{
+    "model": "claude-opus-4-6",
+    "messages": [{"role": "user", "content": "你好"}]
+  }'</code></pre>
+            </section>
+
+            <!-- 常见问题 -->
+            <section id="faq" class="section-anchor">
+                <h2>常见问题</h2>
+
+                <div class="card">
+                    <h3 style="margin-top: 0;">Q：连接失败怎么办？</h3>
+                    <ul>
+                        <li>检查密钥是否完整复制（<code>sk-xxx</code> 格式）</li>
+                        <li>确认网络能访问 <a href="https://api.naxyx.com" target="_blank">https://api.naxyx.com</a></li>
+                        <li>部分工具 URL 需要带 <code>/v1</code>，部分不需要，请注意区分</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-top: 0;">Q：报 429 错误？</h3>
+                    <p>说明上游 API 达到速率限制，请稍后重试或联系管理员扩容渠道。</p>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-top: 0;">Q：Claude Code 和 Cline 的 URL 有什么区别？</h3>
+                    <table>
+                        <tr>
+                            <th>客户端</th>
+                            <th>URL</th>
+                        </tr>
+                        <tr>
+                            <td>Claude Code</td>
+                            <td><code>https://api.naxyx.com</code>（不带 <code>/v1</code>）</td>
+                        </tr>
+                        <tr>
+                            <td>Cline / Kilo Code / Cherry Studio / 酒馆</td>
+                            <td><code>https://api.naxyx.com/v1</code>（带 <code>/v1</code>）</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-top: 0;">Q：支持 streaming 流式输出吗？</h3>
+                    <p>支持。所有客户端默认使用流式输出，体验流畅。</p>
+                </div>
+            </section>
+
+            <!-- 售后支持 -->
+            <footer id="support" class="section-anchor">
+                <div class="support-box">
+                    <h2 style="border: none; margin: 0; padding: 0;">售后支持</h2>
+                    <p style="margin-top: 16px;">遇到问题请先查看本文档，解决不了请加QQ反馈。</p>
+                    <div class="support-qq">1828274080</div>
+                </div>
+            </footer>
+        </div>
+    </main>
+
+    <script>
+        // 侧边栏切换
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
+        }
+
+        // 侧边栏导航高亮
+        document.addEventListener('DOMContentLoaded', function() {
+            const sections = document.querySelectorAll('.section-anchor');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            function updateActiveLink() {
+                let currentSection = '';
+                
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop - 100;
+                    if (window.scrollY >= sectionTop) {
+                        currentSection = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === '#' + currentSection) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+
+            window.addEventListener('scroll', updateActiveLink);
+            updateActiveLink();
+
+            // 点击导航链接关闭移动端侧边栏
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth <= 900) {
+                        toggleSidebar();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
