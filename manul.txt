@@ -17,6 +17,10 @@ netstat -lntp
 kill -p
 tail -f new-api.log
 
+
+https://my.feishu.cn/wiki/Rux3wHlgyiSBuQk6XCIcbm2Zn0k?from=from_naxyx_index
+
+
 PayAddress|
 Pay515Enabled|true
 Pay515PlatformPublicKey|MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA9P3pm9WfkUF/MqetTN1ijbPtJA8J3GkHuf3isDEvXu2lV+P6VegKt62JPWX++7tDH0oc5DVfmpoTXSn2XlIVsTRk96YoIIEVZ81nTikdshjqpBnLqO/jWeVhfI275s+bjUpR75KGfJRGypZTsQfSNwUZW9Sf1POr3YefdWkXDUL+Cz0+QF9tjqkZSnOSMFDmczGaGeekLoFBJxA15PhloTDmTXnMmKzQUnaMi+WpdBfm4ceYu4QmWVDndWIJyfTagRiyFs43Fy33TkeblUIUM9Laeu2tqucAVd6ANFr+Yy9jmj/j699MYphKabxpZsu6I227V00+57F3oEu25pQUwQIDAQAB
